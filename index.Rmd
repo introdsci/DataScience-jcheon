@@ -1,6 +1,6 @@
 ---
-title: " " #replace the title with something short and catchy to represent your project
-subtitle: "____'s Data Science Portfolio" #replace blank with your name
+title: "Linkedin: Does beauty affect pay or position? " #replace the title with something short and catchy to represent your project
+subtitle: 'Joanthan Cheon's Data Science Portfolio" #replace blank with your name
 output:
   html_document:
     df_print: paged
@@ -8,11 +8,13 @@ output:
 
 ## Abstract
 
-In under 250 words give a brief summary of the project so far.
+In this portion of the project, I was able to look at my dataset, clean, and make some graphs out of them. The hardest part of this was to clean the dataset. I wasn't able to clean it perfectly to make it 'tidy', but I was able to clean enough to get initial graphs out. In the future, I'd love to discover how grep and regex works since I will be needing it to make my dataset cleaner. Overall, it was a great experiance and was able to see the power of R. 
 
 ### 1. Discovery and Data Preparation
 
-Provide a one-sentence introduction with what is covered by the first deliverable along with a link to another html page that gives the details.
+I was able to discover that this linkedin dataset was not perfect and needed a lot of cleaning. 
+
+link: https://jcheon.github.io/
 
 ### 2. Model Planning and Building
 
@@ -21,4 +23,3 @@ Coming soon...
 ### 3. Results and Operationalization
 
 Coming soon...
-
