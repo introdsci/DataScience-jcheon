@@ -1,0 +1,145 @@
+---
+title: "linkedin"
+author: "Jonathan Cheon"
+date: "10/7/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Linkedin Dataset 
+    
+## Intro
+The beauty premium is more in demand than ever before with the rise of social media. Not only can employeers judge a person's resume, but they can now judge them on social media presence and their looks. I believe that this opens up more opportunities and higher to those who are more attractive than others. Thus, in this research, I would like to find how much more pay or better positions are provided to those are more attractive than those are not.
+
+## Variables
+Variable | Type | Desription
+-------- | ---- | ----------
+X | int | index of each profile 
+ageEstimate | int | Some computer generated number to determine age. 
+companyFollowerCount | int | number of followers on their company's profile. 
+companyHasLogo| string | image file of his/her company logo. 
+companyName | string | name of the company he/she works for. 
+companyStaffCount | int | employee count.
+companyUrl | string | link to his/her company's website. 
+connectionsCount | int | amount of connections he/she has (capped at 500).
+country | string | 2 letter country code. 
+endDate | date | last day of working at the company. 
+followable | bool | true if they can be followed, else false. 
+followersCount | int | number of followers. 
+genderEstimate | int | computer generated guess on male or female. 
+hasPicture | string | image file of his/her profile pic.
+isPremium | bool | if the user is a premium linkedin member or not. 
+mbrLocation | string | full name of city and country.
+mbrTitle | string | title at company.
+posLocation | string | location of where they work.
+posTitle | string | name of position.
+positionId | int | not too sure. 
+startDate | date | start of their job at the company. 
+avgMemberPosDuration | double | not too sure. 
+avgCompanyPosDuration | double | average amount of time an employee works for the company in days (i assume).
+
+## Source description
+My source is from Kaggle (https://www.kaggle.com/killbot/linkedin-profiles-and-jobs-data) uploaded by a guy named Andrew Truman. Unfortunetely, there is not much documentation on the dataset except that it states that it was scarped by a browser extension. Since there is no documentation, I will have to read through the dataset and make assumptions of what each of the columns describe. There are also image recognition software that was used on their profile pictures that estimates their age and gender. 
+
+
+## Let's begin!
+Here, I am installing some packages and loading in the initial dataset. The dataset will be loaded in with empty cells to NA. Some columns will be removed because they are not needed for this study. One column will be renamed since the rest of the columns are properly named. 
+```{r}
+
+#install.packages("tidyverse")
+#install.packages("ggplot2")
+#install.packages("dplyr")
+
+suppressMessages(library(tidyverse)) 
+suppressMessages(library(ggplot2))
+suppressMessages(library(dplyr))
+
+#importing data with empty cells filled with NA
+linkedin <- read.csv("linkedin_data_cleaner.csv", header=T, na.strings=c("", "NA"))
+
+#removing columns that will not be used
+linkedin$companyUrn <- NULL
+linkedin$mbrLocationCode <- NULL
+linkedin$memberUrn <- NULL
+linkedin$posLocationCode <- NULL
+
+#Renaming columns
+colnames(linkedin)[colnames(linkedin)=="X"] <- "index"
+```
+
+
+Here, I will be creating a 'person' table with various columns pretaining to a person's attribute. Columns include index, ageEstimate, genderEstimate, companyName, country, followable, followersCount, hasPicture, isPremium, posLocation, posTitle, positionId, startDate, and endDate. Since followable and isPremium columns are binary, I will convert this to True or False. StartDate and endDate are string and are not in date type format so I will go ahead and change that as well. 
+```{r}
+#creating person table
+person <- tibble(index=linkedin$index, 
+                 ageEstimate=linkedin$ageEstimate,
+                 genderEstimate=linkedin$genderEstimate, 
+                 companyName=linkedin$companyName,
+                 country=linkedin$country,
+                 followable=linkedin$followable,
+                 followersCount=linkedin$followersCount, 
+                 hasPicture = linkedin$hasPicture,
+                 isPremium=linkedin$isPremium, 
+                 positionLocation=linkedin$posLocation,
+                 posTitle=linkedin$posTitle,
+                 positionId=linkedin$positionId,
+                 startDate=linkedin$startDate, 
+                 endDate=linkedin$endDate
+                 )
+
+#changing binary to true and false. 
+person$followable <- as.logical(as.integer(person$followable))
+person$isPremium <- as.logical(as.integer(person$isPremium))
+
+#turn endDate to character from integer then parse_date
+person$endDate <- as.character(as.numeric(person$endDate))
+person$endDate <- as.Date(person$endDate, format="%y-%m-%d")
+person$startDate <- as.character(as.numeric(person$startDate))
+person$startDate <- as.Date(person$startDate, "%y-%m-%d")
+
+```
+
+
+This will create a separate company table. This table will have all attributes pretaining to a company. Columns that I will add are companyName, companyFollowerCount, companyHasLogo, companyStaffCount, companyUrl, avgMemberPosDuration, and avgCompanyPosDuration. Since there are some uncessary whitespace in some of their names, I will trim the whitespace off and then delete duplicate rows with same name. 
+```{r}
+#creating company table
+company <- tibble(name=linkedin$companyName,
+                  followerCount=linkedin$companyFollowerCount,
+                  hasLogo=linkedin$companyHasLogo,
+                  staffCount=linkedin$companyStaffCount,
+                  url=linkedin$companyUrl,
+                  avgMemberPosition=linkedin$avgMemberPosDuration,
+                  avgCompanyPosition=linkedin$avgCompanyPosDuration
+                  )
+
+#triming off whitespace
+company$name <- trimws(company$name)
+
+#deleting repetitive rows
+company = company[!duplicated(company$name),]
+```
+
+
+This graph displays three different types of gender (male, female, and NA) while ploting how old each person is. It will color code by how many connections they have. The lighter the color, the more connections they have. We can see here that most people have made it to the 500+ connections mark on their profile.
+```{r}
+ggplot(linkedin, aes(genderEstimate, ageEstimate, colour = connectionsCount)) + geom_point()
+
+```
+
+
+In this graph, it will display companies with at least 3 million followers on linkedin and plot how many followers they have. It seems like these are the most popular companys in the world that employee people in Australia. There is also a dashed line that displays the average of these followers. Clearly, we can see that Google, The Economist, and Microsoft are the most popular companys. 
+```{r}
+
+#selecting name and followerCount column from company then picking only the companies with over 3 million followers. 
+x <- company %>%
+  select(name, followerCount) %>%
+  filter(followerCount > 3000000)
+
+ggplot(x, aes(name, followerCount)) + geom_point() + 
+  geom_hline(yintercept = mean(x$followerCount), linetype="dashed", color="red")
+```
+
+
+## Future research question
+Though it will be hard to retrieve people's salary and their linkedin profile, I will still try to research how people's attractiveness affects their pay and position. If this becomes too much of a challenge, I would also like to predict when a person will either quit or get a promotion using their end and start dates at their company. 
