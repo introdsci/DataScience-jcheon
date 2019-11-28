@@ -4,6 +4,24 @@ output: html_notebook
 ---
 
 
+1) Based on the initial discovery and exploration from your first phase, identify introduce what predictions you would like to model from your data, and why those predictions should matter
+2) Your initial dataset (from the first deliverable) should be supplemented by a second data source that is also of a different type. Describe your additional data source(s) and how it should provide useful information that was not already available from your first source alone. The second deliverable should include data from at least two different data types, including:
+        Spreadsheets (CSV, Excel, or otherwise two-dimensional row/column format files)
+        Statistical software (SAS, SPSS, R data, etc)
+        Database
+        API data retrieval
+        Structured file (JSON, XML, etc)
+        Web scraped data
+3) As required in the previous deliverable, all data should be clean and tidy. Show each of your tables in the documentation.
+4) Document your initial plan for a simple model, supplemented with visualization that justify the initial model 
+5) Discuss why the model's parameters and output should make sense. Conversely, discuss possible limitations to that model (such as needing more data, need for additional parameters to be gathered, or the need to address "intolerable mistakes" [see week 1 reading, page 48]). If you make multiple iterations of model planning and building, include each version along with the motivation for revision.
+6) Summarize your deliverable and link to it from the index.html file. Use version control and publish your work to GitHub pages.
+
+
+
+
+
+Importing various libraries and previously created markdown from portfolio project 1.
 ```{r}
 
 include <- function(library_name){
@@ -16,10 +34,111 @@ include("tidyverse")
 include("knitr")
 include("stringr")
 include("caret")
+include("rvest")
 purl("linkedin.Rmd", output = "part1.r")
 source("part1.r")
 
 ```
+
+```{r}
+
+# Need to scrape on condition that if there is a pay tag, then grab other elements.
+read_jobs <- function(x)
+{
+  scrape <- tibble(
+                   position= as.character(),
+                   location= as.character(),
+                   description= as.character(),
+                   pay= as.character()
+                   )
+  
+  for(i in 0:200)
+  {
+      url <- paste(x, i, sep = "")
+      print(url)
+      
+      site <- read_html(url)
+  
+      data <- site %>%
+            html_nodes("article._2m3Is-x") #article.
+      
+      
+      pay <- data %>%
+        html_nodes("div.xxz8a1h > span:nth-child(3)") %>%
+        html_attr("aria-label")
+      
+      # pay <- gsub("\\$\\d+,\\d+", pay)
+      
+      position <- data %>%
+        html_attr("aria-label")
+      
+      position <- gsub("-.*", "", position)
+      
+      
+      location_grand <- data %>%
+        html_nodes("span._3FrNV7v")
+      
+      location_parent <- location_grand %>%
+        html_nodes("strong.lwHBT6d")
+      
+      location <- location_parent %>% 
+        html_nodes(".Eadjc1o") %>%
+        html_text() 
+      
+      location <- gsub("location: ", "", location)
+      
+      location <- location[c(TRUE, FALSE)]
+      
+      
+      description <- data %>%
+        html_nodes(".bl7UwXp") %>%
+        html_text()
+      
+      
+      company_parent <- site %>%
+        html_nodes("article._2m3Is-x > span:nth-child(5)")
+
+      company_p1 <- company_parent %>%
+        html_nodes("span")
+
+      company <- company_p1 %>%
+        html_nodes("a._3AMdmRg") %>%
+        html_attr("aria-label")
+
+      # company_part2 <- company_parent %>%
+      #   html_nodes("span > span:nth-child(2)") %>%
+      #   html_text()
+
+      # print(company)
+
+      table <- tibble(
+                      position= position,
+                      location= location,
+                      description= description,
+                      pay= pay
+                      )
+    
+      #probably need to append instead of combine
+      scrape <- rbind(scrape, table)
+      
+  }
+  return(scrape)
+}
+
+
+scraped <- read_jobs("https://www.seek.com.au/jobs?page=")
+
+
+## Clean data
+# scraped$pay <- grep("\\$\\d+,\\d+", scraped$pay)
+
+
+
+
+```
+
+
+
 
 ```{r}
 
@@ -30,9 +149,128 @@ linkedin2$img <- NULL
 
 colnames(linkedin2)[colnames(linkedin2)=="c_name"] <- "company_name"
 
+levels(linkedin2$company_name) <- as.factor(linkedin2$company_name)
+
+sample_selection <- createDataPartition(linkedin2$avg_pos_len, p=0.70, list=FALSE)
+
+train = linkedin2[sample_selection, ]
+test = linkedin2[-sample_selection, ]
+
+train_model <- lm(avg_pos_len ~ age + n_pos + avg_prev_tenure_len + n_prev_tenures + tenure_len + beauty, data = train)
+  
+summary(train_model)
+
+predictions <- train_model %>% predict(test)
+
+ggplot(data = test, aes(x = predictions, y = n_pos)) + 
+  geom_point() + 
+  geom_smooth(method = "lm")
+
+R2 <- R2(predictions, test$avg_pos_len)
+RMSE <- RMSE(predictions, test$avg_pos_len)
+MAE <- MAE(predictions, test$n_pos)
 
 
-levels(linkedin2$company_name) <- as.factor(colnames$company_name)
-levels(person$academic_major <- as.factor(person$academic_major))
+
+
+
+
+```
+
+
+Variable | Type | Desription
+-------- | ---- | ----------
+X | int | index of each profile 
+avg_n_pos_per_tenure | int | Average number of positions per tenure
+avg_pos_len | int | Average position length
+avg_prev_tenure_len | int | Average previous tenure length
+c_name | character | Company name
+n_pos | int | Number of positions
+n_prev_tenures | int | Number of previous tenures
+tenure_len | int | Tenure length
+age | int | Age estimate
+beauty | int | Beauty estimate
+beauty_female | int | Beauty estimate as female
+beauty_male | int | Beauty esimate as male
+blur | int | Blur level estimate 
+blur_gaussian | int | Another blue level estimate
+blur_motion | int | Blur motion estimate
+emo_anger | int | Anger level estimate
+emo_disgust | int | Disgust level estimate
+emo_fear | int | Fear level estimate
+emo_happiness | int | Happiness level estimate
+emo_neutral | int | Neutral level estimate
+emo_sadness | int | Sadness level estimate
+emo_surprise | int | Suprise level estimate
+ethnicity | string/categorical | Ethnicity estimate
+face_quality | int | Face quality estimate
+gender | int | Gender estimate
+glass | string/categorical | Dark, None, or Normal 
+head_pitch | int | Head pitch estimate
+head_roll | int | Head roll estimate
+head_yaw | int | Head Yaw estimate
+mouth_close | int | Mouth close estimate
+mouth_mask | int | Mouth Mask estimate
+mouth_open | int | Mouth open estimate
+mouth_other | int | Mouth other estimate
+skin_acne | int | Skin acne estimate
+skin_dark_circle | int | Skin dark circle estimate
+skin_health | int | Skin health estimate
+skin_stain | int | Skin stain estimate
+smile | int | Smile estimate
+african | int | Africa estimate
+celtic_english | int | Celtic English estimate
+east_asian | int | East Asian estiamte
+european | int | European estimate
+greek | int | Greek estimate
+hispanic | int | Hispanic estimate
+jewish | int | Jewish estiamte
+muslim | int | Muslim estimate
+nationality | string | Nationality estimate
+nordic | int | Nordic estimate
+south_asian | int | South Asian estimate
+n_followers | int | Number of followers on linkedin
+
+
+## Intro
+This dataset fit really nicely with my first dataset because it has data on people's profile picture beauty with calculated metrics. Initially, I did not know how to interpret this dataset since there was no documentation. I eventually reached out to the creator of the dataset, Andrew Truman (https://www.linkedin.com/in/kbot/), to ask him a few questions about it. He explained to me what all of the meterics meant and in what units they were. He also explained that he used a software called Face++ (https://www.faceplusplus.com/) to examine profile pictures which used machine learning to give mumerical values to profile pictures. 
+
+
+## Prediction Hypothesis
+With this dataset, I want to explore how various work history metrics can predict a person's beauty (dependent variable). 
+```{r}
+
+linkedin2 <- read.csv("linkedin_data.csv")
+
+linkedin2$m_urn <- NULL
+linkedin2$img <- NULL
+
+colnames(linkedin2)[colnames(linkedin2)=="c_name"] <- "company_name"
+
+levels(linkedin2$company_name) <- as.factor(linkedin2$company_name)
+
+```
+
+
+```{r}
+sample_selection <- createDataPartition(linkedin2$beauty, p=0.70, list=FALSE)
+
+train = linkedin2[sample_selection, ]
+test = linkedin2[-sample_selection, ]
+
+train_model <- lm(beauty ~ avg_n_pos_per_prev_tenure + avg_pos_len + avg_prev_tenure_len  + n_prev_tenures + tenure_len + company_name, data = train)
+  
+summary(train_model)
+
+predictions <- train_model %>% predict(test)
+
+ggplot(data = test, aes(x = predictions, y = beauty)) + 
+  geom_point() + 
+  geom_smooth(method = "lm")
+
+R2 <- R2(predictions, test$beauty)
+RMSE <- RMSE(predictions, test$beauty)
+MAE <- MAE(predictions, test$beauty)
+
 
 ```
