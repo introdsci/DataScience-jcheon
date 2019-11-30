@@ -1,33 +1,17 @@
 ---
 title: "Linkedin Deliverable 2"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
-
-1) Based on the initial discovery and exploration from your first phase, identify introduce what predictions you would like to model from your data, and why those predictions should matter
-2) Your initial dataset (from the first deliverable) should be supplemented by a second data source that is also of a different type. Describe your additional data source(s) and how it should provide useful information that was not already available from your first source alone. The second deliverable should include data from at least two different data types, including:
-        Spreadsheets (CSV, Excel, or otherwise two-dimensional row/column format files)
-        Statistical software (SAS, SPSS, R data, etc)
-        Database
-        API data retrieval
-        Structured file (JSON, XML, etc)
-        Web scraped data
-3) As required in the previous deliverable, all data should be clean and tidy. Show each of your tables in the documentation.
-4) Document your initial plan for a simple model, supplemented with visualization that justify the initial model 
-5) Discuss why the model's parameters and output should make sense. Conversely, discuss possible limitations to that model (such as needing more data, need for additional parameters to be gathered, or the need to address "intolerable mistakes" [see week 1 reading, page 48]). If you make multiple iterations of model planning and building, include each version along with the motivation for revision.
-6) Summarize your deliverable and link to it from the index.html file. Use version control and publish your work to GitHub pages.
-
-
-
-
-
-Importing various libraries and previously created markdown from portfolio project 1.
+Importing various libraries and previously created markdown from portfolio 1.
 ```{r}
 
 include <- function(library_name){
   if( !(library_name %in% installed.packages()) )
-    install.packages(library_name) 
-  library(library_name, character.only=TRUE)
+    install.packages(library_name)
+  suppressMessages(library(library_name, character.only=TRUE))
 }
 
 include("tidyverse")
@@ -35,148 +19,158 @@ include("knitr")
 include("stringr")
 include("caret")
 include("rvest")
-purl("linkedin.Rmd", output = "part1.r")
+include("DT")
+suppressMessages(purl("linkedin.Rmd", output = "part1.r"))
 source("part1.r")
 
 ```
 
-```{r}
 
-# Need to scrape on condition that if there is a pay tag, then grab other elements.
+Here, I will be scraping from a website called Seek (https://www.seek.com.au/). This seems like it is the biggest job search company that posts jobs in Australia. This scrape will consist of position, location, description, and pay. I also wanted to grab the company name, but for some reason, some companies want to keep themselves private so, they are under a different tag and could not be scraped. I have left this out due to the difficulty. 
+```{r}
 read_jobs <- function(x)
 {
-  scrape <- tibble(
-                   position= as.character(),
+  #created a tibble that consist of the scraped data
+  scrape <- tibble(position= as.character(),
                    location= as.character(),
                    description= as.character(),
                    pay= as.character()
                    )
   
+  #Looped through 200 since that is how many pages Seek provides in their search for all jobs. 
   for(i in 0:200)
   {
       url <- paste(x, i, sep = "")
-      print(url)
       
       site <- read_html(url)
   
+      #This is the most parent nodes. 
       data <- site %>%
             html_nodes("article._2m3Is-x") #article.
       
-      
+      #Grabbing pay data and using html_attr since it can also fill with NA if there is not tag.
       pay <- data %>%
         html_nodes("div.xxz8a1h > span:nth-child(3)") %>%
         html_attr("aria-label")
       
-      # pay <- gsub("\\$\\d+,\\d+", pay)
-      
+      #Grabbing position data. 
       position <- data %>%
         html_attr("aria-label")
       
+      #Doing some initial cleaning to remove unnecessary information other than the position.
       position <- gsub("-.*", "", position)
       
-      
+      #Location's grandparent node. 
       location_grand <- data %>%
         html_nodes("span._3FrNV7v")
       
+      #Location's parent node
       location_parent <- location_grand %>%
         html_nodes("strong.lwHBT6d")
       
+      #Grabbing location data
       location <- location_parent %>% 
         html_nodes(".Eadjc1o") %>%
         html_text() 
       
+      #Initial cleaning to the location by removing 'location:'. 
       location <- gsub("location: ", "", location)
       
+      #Since there are 2 nodes under the .Eadjclo class, I only got the location node and removed the not location nodes. Every odd node was a location node. 
       location <- location[c(TRUE, FALSE)]
       
-      
+      #Grabbing description nodes. 
       description <- data %>%
         html_nodes(".bl7UwXp") %>%
         html_text()
       
-      
-      company_parent <- site %>%
+      #Company grandparent's node. 
+      company_grand <- site %>%
         html_nodes("article._2m3Is-x > span:nth-child(5)")
 
-      company_p1 <- company_parent %>%
+      #Company's parent node.
+      company_parent <- company_grand %>%
         html_nodes("span")
 
-      company <- company_p1 %>%
+      #Grabbing company nodes. 
+      company <- company_parent %>%
         html_nodes("a._3AMdmRg") %>%
         html_attr("aria-label")
 
-      # company_part2 <- company_parent %>%
-      #   html_nodes("span > span:nth-child(2)") %>%
-      #   html_text()
-
-      # print(company)
-
-      table <- tibble(
-                      position= position,
+      #Creating a tibble with each of the attributes per page. 
+      table <- tibble(position= position,
                       location= location,
                       description= description,
                       pay= pay
                       )
     
-      #probably need to append instead of combine
+      #Combining the tibble with the final tibble. 
       scrape <- rbind(scrape, table)
       
   }
+  #Return the final tibble with all of the scraped data.
   return(scrape)
 }
 
 
 scraped <- read_jobs("https://www.seek.com.au/jobs?page=")
 
-
-## Clean data
-# scraped$pay <- grep("\\$\\d+,\\d+", scraped$pay)
-
-
-
-
+datatable(scraped, options=list(pageLength=10))
 ```
 
 
-
-
+Now that we scraped the data, we need to do some more cleaning. 
 ```{r}
+#Extract the string where yearly salary is posted then remove the commas. 
+scraped$pay <- str_extract(scraped$pay, "\\d+,\\d+")
+scraped$pay <- as.numeric(gsub(",","",scraped$pay))
 
-linkedin2 <- read.csv("linkedin_data.csv")
+#Remove rows where pay is NA.
+scraped <- scraped[!is.na(scraped$pay), ]
 
-linkedin2$m_urn <- NULL
-linkedin2$img <- NULL
+#make location column a factor type
+levels(scraped$location <- as.factor(scraped$location))
 
-colnames(linkedin2)[colnames(linkedin2)=="c_name"] <- "company_name"
+#since there are some factor levels with only 1 or 2 amount, we will only choose the ones with at least 3 amount.
+table(scraped$location)
 
-levels(linkedin2$company_name) <- as.factor(linkedin2$company_name)
+scraped <- subset(scraped, location=="ACT" | location=="Adelaide" | location== "Brisbane" | location== "Melbourne" | location=="Perth" | location == "Sydney" )
 
-sample_selection <- createDataPartition(linkedin2$avg_pos_len, p=0.70, list=FALSE)
 
-train = linkedin2[sample_selection, ]
-test = linkedin2[-sample_selection, ]
+datatable(scraped, options=list(pageLength=10))
+```
 
-train_model <- lm(avg_pos_len ~ age + n_pos + avg_prev_tenure_len + n_prev_tenures + tenure_len + beauty, data = train)
-  
+Now, we can start investigating. I want to investigate if we could predict pay with where they are located. This will probably be invalid since there is not enough datapoints and that various jobs pay a different amount. However, we will not know until we find out and try. Let's begin!
+```{r}
+#randomly picking 70% data
+sample_selection <- createDataPartition(scraped$pay, p=0.70, list=FALSE)
+
+# #Splitting up 70% to go into our train. and 30% to go into our test. 
+train = scraped[sample_selection, ]
+test = scraped[-sample_selection, ]
+
+# #Linear model on our dependent variable (pay) with independent variables (location)
+train_model <- lm(pay ~ factor(location), data = train)
+
 summary(train_model)
 
 predictions <- train_model %>% predict(test)
 
-ggplot(data = test, aes(x = predictions, y = n_pos)) + 
-  geom_point() + 
+#Let's plot it
+ggplot(data = test, aes(x = predictions, y = pay)) +
+  geom_point() +
   geom_smooth(method = "lm")
 
-R2 <- R2(predictions, test$avg_pos_len)
-RMSE <- RMSE(predictions, test$avg_pos_len)
-MAE <- MAE(predictions, test$n_pos)
-
-
-
-
-
-
+R2 <- R2(predictions, test$pay)
+RMSE <- RMSE(predictions, test$pay)
+MAE <- MAE(predictions, test$pay)
 ```
+Lookint at the summary of the train model, we see that none of the independent variables have any significant p values. Therefore, we cannot predict the amount of pay using location of where the position is. This concurs with my initial hypothesis where I have stated that this research would be invalid due to the insufficient amount of data and various types of jobs that pay at different rates. 
 
+
+
+#Intro to 2nd dataset
+This dataset fit really nicely with my first dataset because it has data on people's profile picture beauty with calculated metrics. Initially, I did not know how to interpret this dataset since there was no documentation. I eventually reached out to the creator of the dataset, Andrew Truman (https://www.linkedin.com/in/kbot/), to ask him a few questions about it. He explained to me what all of the meterics meant and in what units they were. He also explained that he used a software called Face++ (https://www.faceplusplus.com/) to examine profile pictures which used machine learning to give mumerical values to profile pictures. This dataset has the following attributes. 
 
 Variable | Type | Desription
 -------- | ---- | ----------
@@ -231,39 +225,46 @@ nordic | int | Nordic estimate
 south_asian | int | South Asian estimate
 n_followers | int | Number of followers on linkedin
 
-
-## Intro
-This dataset fit really nicely with my first dataset because it has data on people's profile picture beauty with calculated metrics. Initially, I did not know how to interpret this dataset since there was no documentation. I eventually reached out to the creator of the dataset, Andrew Truman (https://www.linkedin.com/in/kbot/), to ask him a few questions about it. He explained to me what all of the meterics meant and in what units they were. He also explained that he used a software called Face++ (https://www.faceplusplus.com/) to examine profile pictures which used machine learning to give mumerical values to profile pictures. 
-
-
 ## Prediction Hypothesis
-With this dataset, I want to explore how various work history metrics can predict a person's beauty (dependent variable). 
-```{r}
+With this dataset, I want to explore how various work history metrics can predict a person's beauty (dependent variable). First, we need to import the data and do some initial cleaning. 
 
+In this segment, I will try to find if there is any correlation between beauty and other work history metrics. I believe that there is some correlation between how beauty can affect a person's work. I will make beauty the dependent variable while average position length, average previous tenure length, and tenure length will be the independent variables. But first, we need to do some intiial cleaning. 
+
+```{r}
+#Import dataset
 linkedin2 <- read.csv("linkedin_data.csv")
 
+#delete columns we don't need.
 linkedin2$m_urn <- NULL
 linkedin2$img <- NULL
 
+#rename column to company_name instead for clarity.
 colnames(linkedin2)[colnames(linkedin2)=="c_name"] <- "company_name"
 
+#change company_name to a factors. 
 levels(linkedin2$company_name) <- as.factor(linkedin2$company_name)
 
+datatable(linkedin2, options=list(pageLength=10))
 ```
 
 
+Now, we are ready to explore. Let't see if there is any correlation between beauty and work metrics. 
 ```{r}
+#Randomly choosing 70% of the data. 
 sample_selection <- createDataPartition(linkedin2$beauty, p=0.70, list=FALSE)
 
+#Splitting up 70% to go into our train. and 30% to go into our test. 
 train = linkedin2[sample_selection, ]
 test = linkedin2[-sample_selection, ]
 
-train_model <- lm(beauty ~ avg_n_pos_per_prev_tenure + avg_pos_len + avg_prev_tenure_len  + n_prev_tenures + tenure_len + company_name, data = train)
+#Linear model on our dependent variable (beauty) with independent variables (avg_pos_len, avg_prev_tenure_len, and tenure_len)
+train_model <- lm(beauty ~ avg_pos_len + avg_prev_tenure_len + tenure_len, data = train)
   
 summary(train_model)
 
 predictions <- train_model %>% predict(test)
 
+#Let's plot it
 ggplot(data = test, aes(x = predictions, y = beauty)) + 
   geom_point() + 
   geom_smooth(method = "lm")
@@ -272,5 +273,21 @@ R2 <- R2(predictions, test$beauty)
 RMSE <- RMSE(predictions, test$beauty)
 MAE <- MAE(predictions, test$beauty)
 
+R2
+RMSE
+MAE
+
+
 
 ```
+
+
+After this analysis, it seems like average position length, average previous tenure length, and tenure length are significant since their p value is less than 0.05. Though the P values are less than 0.05, it does not mean that they are significant. It seems like they are significant because they are all relatively in the same area on the graph. This needs further investigation. If we look at the r-squared value, it is about 0.027 meaning that only 2.7% of the data points are explained by the independent variables(avg_pos_len, avg_prev_tenure, and tenure_len). With a r-squared value this low, we can conclude that the independent variables do not have much of an ability to predict a person's beauty. 
+
+
+
+
+
+
+
+
