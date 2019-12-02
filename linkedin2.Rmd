@@ -139,6 +139,7 @@ scraped <- subset(scraped, location=="ACT" | location=="Adelaide" | location== "
 #output of table onto html
 datatable(scraped, options=list(pageLength=5))
 ```
+
 # Analysis
 
 Now, we can start investigating. I want to investigate if we could predict pay with where they are located. This will probably be invalid since there is not enough datapoints and that various jobs pay a different amount. However, we will not know until we find out and try. Let's begin!
@@ -245,7 +246,7 @@ colnames(linkedin2)[colnames(linkedin2)=="c_name"] <- "company_name"
 #change company_name to a factors. 
 levels(linkedin2$company_name) <- as.factor(linkedin2$company_name)
 
-datatable(linkedin2, options=list(pageLength=10))
+datatable(linkedin2, options=list(pageLength=5))
 ```
 
 
