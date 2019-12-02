@@ -25,8 +25,9 @@ source("part1.r")
 
 ```
 
-
+# Intro 1st Dataset (Webscrape)
 Here, I will be scraping from a website called Seek (https://www.seek.com.au/). This seems like it is the biggest job search company that posts jobs in Australia. This scrape will consist of position, location, description, and pay. I also wanted to grab the company name, but for some reason, some companies want to keep themselves private so, they are under a different tag and could not be scraped. I have left this out due to the difficulty. 
+
 ```{r}
 read_jobs <- function(x)
 {
@@ -115,7 +116,6 @@ read_jobs <- function(x)
 
 scraped <- read_jobs("https://www.seek.com.au/jobs?page=")
 
-datatable(scraped, options=list(pageLength=10))
 ```
 
 
@@ -136,9 +136,10 @@ table(scraped$location)
 
 scraped <- subset(scraped, location=="ACT" | location=="Adelaide" | location== "Brisbane" | location== "Melbourne" | location=="Perth" | location == "Sydney" )
 
-
-datatable(scraped, options=list(pageLength=10))
+#output of table onto html
+datatable(scraped, options=list(pageLength=5))
 ```
+# Analysis
 
 Now, we can start investigating. I want to investigate if we could predict pay with where they are located. This will probably be invalid since there is not enough datapoints and that various jobs pay a different amount. However, we will not know until we find out and try. Let's begin!
 ```{r}
@@ -165,11 +166,11 @@ R2 <- R2(predictions, test$pay)
 RMSE <- RMSE(predictions, test$pay)
 MAE <- MAE(predictions, test$pay)
 ```
-Lookint at the summary of the train model, we see that none of the independent variables have any significant p values. Therefore, we cannot predict the amount of pay using location of where the position is. This concurs with my initial hypothesis where I have stated that this research would be invalid due to the insufficient amount of data and various types of jobs that pay at different rates. 
+Looking at the summary of the train model, we see that none of the independent variables have any significant p values. Therefore, we cannot predict the amount of pay using location of where the position is. This concurs with my initial hypothesis where I have stated that this research would be invalid due to the insufficient amount of data and various types of jobs that pay at different rates. 
 
 
 
-#Intro to 2nd dataset
+# Intro to 2nd dataset
 This dataset fit really nicely with my first dataset because it has data on people's profile picture beauty with calculated metrics. Initially, I did not know how to interpret this dataset since there was no documentation. I eventually reached out to the creator of the dataset, Andrew Truman (https://www.linkedin.com/in/kbot/), to ask him a few questions about it. He explained to me what all of the meterics meant and in what units they were. He also explained that he used a software called Face++ (https://www.faceplusplus.com/) to examine profile pictures which used machine learning to give mumerical values to profile pictures. This dataset has the following attributes. 
 
 Variable | Type | Desription
@@ -276,9 +277,6 @@ MAE <- MAE(predictions, test$beauty)
 R2
 RMSE
 MAE
-
-
-
 ```
 
 
@@ -286,8 +284,10 @@ After this analysis, it seems like average position length, average previous ten
 
 
 
+# Conclusion
+In this segment of research, I have explored how pay correlates to location. We have figured out that there is no correlation or significant impact on predicting pay with location. This was due to the vast amount of jobs and qualifications. One job may pay 100k, where another job may pay 35k. There is a huge discrepancy between jobs, therefore there was no way to predict pay using location. One thing we can do is to predict pay on which job type is it, meaning we can investigate how much pay a person receives if he/she is a manager, software engineer, or consultant for instance. 
 
+I have also found out that is is pretty difficult to web scrape when the website is not in tabular form. The job posting website that I used was Seek.com (https://seek.com) and there were many multiple classes for each tag or random span tags. Also, if the length of the vectors did not match, it would be difficult to combine tables together. 
 
-
-
+In latter segment, I explored how beauty could be predicted using average position length, average previous tenure, and tenure length. From the statistics point of view, it stated that all three of the independent variables were significant (<0.5 p-value), but when we took a deeper look into the R^2^, we discovered that only 2.7% of the data points were explained by the independent variables. 
 
