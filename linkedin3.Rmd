@@ -1,0 +1,213 @@
+---
+title: "Linkedin Deliverable 2"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+Operationalize: How to make your research actually go into affect? 
+Intervention: After operationaliziation, can you notice any change happening? What datapoints would be taken to measure the success? 
+  - Cost/benefit ratio? 
+  - unintended consequences? 
+
+
+```{r, results = 'hide', messages=FALSE}
+include <- function(library_name){
+  if( !(library_name %in% installed.packages()) )
+    install.packages(library_name)
+  suppressMessages(library(library_name, character.only=TRUE))
+}
+
+include("tidyverse")
+include("knitr")
+include("stringr")
+include("caret")
+include("rvest")
+include("DT")
+include("plyr")
+include("dplyr")
+suppressMessages(purl("linkedin2.Rmd", output = "part2.r"))
+source("part2.r")
+
+```
+
+# Deliverable 1 Edits
+Cleaning up my person tibble where I will be removing all rows where a column has a NA. 
+```{r}
+# Remove rows where NA is present. 
+person <- person[!is.na(person$positionLocation),]
+person <- person[!is.na(person$ageEstimate),]
+person <- person[!is.na(person$genderEstimate),]
+person <- person[!is.na(person$companyName),]
+person <- person[!is.na(person$country),]
+person <- person[!is.na(person$isPremium),]
+person <- person[!is.na(person$posTitle),]
+person <- person[!is.na(person$positionId),]
+
+#Removing columns I will not need. 
+linkedin$companyHasLogo <- NULL
+linkedin$hasPicture <- NULL
+  
+```
+
+Improving on my graph from deliverable 1. Instead of using points, I will be using a bar graph for better visualization. I have also improved the Y-axis to label with numbers instead of scientific notation. 
+```{r}
+ggplot(x, aes(name, followerCount)) + geom_col() + 
+  scale_y_continuous(name = 'followers', labels = scales::comma) + 
+  geom_hline(yintercept = mean(x$followerCount), linetype="dashed", color="red")
+```
+
+# Deliverable 2 imporovement
+```{r}
+#extract only Managers, Director, Assistant, Engineer, ANalyst, Consultant, Coordinator, and Supervisor
+scraped$position <- str_extract(scraped$position, "Manager|Director|Assistant|Engineer|Analyst|Consultant|Coordinator|Supervisor")
+
+#remove rows where position row is NA
+scraped <- scraped[!is.na(scraped$position),]
+
+#make position column to factor. 
+levels(scraped$position <- as.factor(scraped$position))
+
+#Remove description column
+scraped$description <- NULL
+
+#Print first 10 rows. 
+head(scraped, n = 10L)
+```
+
+
+```{r}
+#calculate number of positions and calculate avg pay. 
+position_group <- group_by(scraped, position)
+avg_pay <- dplyr::summarise(position_group,
+  count = n(),
+  pay_avg = mean(pay, na.rm = TRUE))
+
+#Creating new tibble where position, number of that position, and average page from scraped data. 
+avg_pay_tibble <- tibble(posTitle = as.factor(avg_pay$position), 
+                         count = avg_pay$count,
+                         avg_pay = avg_pay$pay_avg)
+
+#Making position title column to a factor. 
+avg_pay_tibble$posTitle <- as.factor(avg_pay_tibble$posTitle)
+
+#Cleaning linkedin dataset. Grabbing only people where their positions are Manager, Director, Assistant, Engineer, Analyst, Consultant, Coordinator, or Supervisor. 
+linkedin$posTitle <- str_extract(linkedin$posTitle, "Manager|Director|Assistant|Engineer|Analyst|Consultant|Coordinator|Supervisor")
+
+#Making position title to a factor 
+linkedin$posTitle <- as.factor(linkedin$posTitle)
+
+#Grabbing the position locations where it matches ACT, Adelide, Brisbane, Melbourne, Perth, and Sydney
+linkedin$posLocation <- str_extract(linkedin$posLocation, "ACT|Adelaide|Brisbane|Melbourne|Perth|Sydney")
+
+#Doing a join to combine my calculated average pay by position tibble with the original table called linkedin. 
+linkedin <- left_join(linkedin, avg_pay_tibble, by= "posTitle")
+
+#Remove all rows where NA exists. 
+linkedin <- na.omit(linkedin)
+
+#Print first 10 rows in linkedin.
+head(linkedin, n=10L)
+
+```
+
+# Analysis
+What I want to explore is if I could be able to predict how a long a person is going to stay at their positions. Let's begin the model. 
+
+```{r}
+#Randomly choosing 70% of the data. 
+sample_selection <- createDataPartition(linkedin$avgMemberPosDuration, p=0.70, list=FALSE)
+
+#Splitting up 70% to go into our train. and 30% to go into our test. 
+train = linkedin[sample_selection, ]
+test = linkedin[-sample_selection, ]
+
+# Linear model on average member position duration vs. age, company size, linkedin connections, linkedin followers, gender, average pay, and groups of positions. 
+train_model <- lm(avgMemberPosDuration ~ ageEstimate + companyStaffCount + connectionsCount + followersCount + genderEstimate + avg_pay +  factor(posTitle), data = train)
+  
+summary(train_model)
+
+predictions <- train_model %>% predict(test)
+
+#Let's plot it
+ggplot(data = test, aes(x = predictions, y = avgMemberPosDuration)) + geom_jitter() + geom_smooth(method="lm")
+
+R2 <- R2(predictions, test$avgMemberPosDuration)
+RMSE <- RMSE(predictions, test$avgMemberPosDuration)
+MAE <- MAE(predictions, test$avgMemberPosDuration)
+
+R2
+RMSE
+MAE
+```
+
+
+Looks like there are some strong indicators that would be helpful to predict how long a person will stay at a company. According to the summary, it says age, linkedin connections count, average pay, assistant positions, coordinator positions, and director positions have significant p-values. Because we see that the Director's position is of significant values, we will need to create a new column to determine if a position is of Director. Then we will include that column into the independent variables to try to make a more accurate estimate of how long a person would stay at their job. 
+
+
+```{r}
+#creates a vector to see if a person's position is a Director type. 
+director_bool <- grepl("Director", linkedin$posTitle)
+
+#append this column to our original dataset in linkedin. 
+linkedin$director_bool <- director_bool
+
+#Randomly choosing 70% of the data. 
+sample_selection <- createDataPartition(linkedin$avgMemberPosDuration, p=0.70, list=FALSE)
+
+#Splitting up 70% to go into our train. and 30% to go into our test. 
+train = linkedin[sample_selection, ]
+test = linkedin[-sample_selection, ]
+
+#New train models with all the significant variables from pervious model and with our new director boolean variable. 
+train_model <- lm(avgMemberPosDuration ~ ageEstimate + connectionsCount + avg_pay + director_bool, data = train)
+  
+summary(train_model)
+
+predictions <- train_model %>% predict(test)
+
+#Let's plot it
+ggplot(data = test, aes(x = predictions, y = avgMemberPosDuration)) + geom_jitter() + geom_smooth(method="lm")
+
+R2 <- R2(predictions, test$avgMemberPosDuration)
+RMSE <- RMSE(predictions, test$avgMemberPosDuration)
+MAE <- MAE(predictions, test$avgMemberPosDuration)
+
+R2
+RMSE
+MAE
+```
+
+After improving our model, immediately, I notice that our the number of linkedin connections count is no longer significant. I will go ahead and remove that independent variable. 
+
+
+```{r}
+
+#Randomly choosing 70% of the data. 
+sample_selection <- createDataPartition(linkedin$avgMemberPosDuration, p=0.70, list=FALSE)
+
+#Splitting up 70% to go into our train. and 30% to go into our test. 
+train = linkedin[sample_selection, ]
+test = linkedin[-sample_selection, ]
+
+#New train models with all the significant variables from pervious model and with our new director boolean variable. 
+train_model <- lm(avgMemberPosDuration ~ ageEstimate + avg_pay + director_bool, data = train)
+  
+summary(train_model)
+
+predictions <- train_model %>% predict(test)
+
+#Let's plot it
+ggplot(data = test, aes(x = predictions, y = avgMemberPosDuration)) + geom_jitter() + geom_smooth(method="lm")
+
+R2 <- R2(predictions, test$avgMemberPosDuration)
+RMSE <- RMSE(predictions, test$avgMemberPosDuration)
+MAE <- MAE(predictions, test$avgMemberPosDuration)
+
+R2
+RMSE
+MAE
+```
+
+Now that the number of linkedin connections is removed from the independent variables, we could see our final result. All of our variables are now significant with an overall R^2 of 15%. This means that using the age, average pay of director position, and for directors, we can estimate about 15% of the time of how long they will stay at their job. If we look deeper into 
