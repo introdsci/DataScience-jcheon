@@ -6,12 +6,13 @@ output:
     df_print: paged
 ---
 
-Operationalize: How to make your research actually go into affect? 
-Intervention: After operationaliziation, can you notice any change happening? What datapoints would be taken to measure the success? 
-  - Cost/benefit ratio? 
-  - unintended consequences? 
+# Final Deliverable 
+In this study, I was able to look at various Linkedin datasets. Initially, I wanted to discover how beauty would impact a person's career or salary. Due to complications, my research questions have changed or turned different directions. 
+
+This report will improve previous deliverables and provide a final suggestion. 
 
 
+Importing libraries and previous deliverables. 
 ```{r, results = 'hide', messages=FALSE}
 include <- function(library_name){
   if( !(library_name %in% installed.packages()) )
@@ -51,6 +52,7 @@ linkedin$hasPicture <- NULL
   
 ```
 
+
 Improving on my graph from deliverable 1. Instead of using points, I will be using a bar graph for better visualization. I have also improved the Y-axis to label with numbers instead of scientific notation. 
 ```{r}
 ggplot(x, aes(name, followerCount)) + geom_col() + 
@@ -76,9 +78,9 @@ scraped$description <- NULL
 head(scraped, n = 10L)
 ```
 
-
+After looking at my previous dataset and what I have cleaned, I think I will be able to make a model that would be able to predict how long a person would stay at their job based on various variables. Here, I will be cleaning up a little more to pursue this question. 
 ```{r}
-#calculate number of positions and calculate avg pay. 
+#calculate number of positions and calculate avg pay based on positions. 
 position_group <- group_by(scraped, position)
 avg_pay <- dplyr::summarise(position_group,
   count = n(),
@@ -113,7 +115,7 @@ head(linkedin, n=10L)
 ```
 
 # Analysis
-What I want to explore is if I could be able to predict how a long a person is going to stay at their positions. Let's begin the model. 
+For my first analysis, I will be attempting to predict how long a person would stay at their job based on their age, size of company, connection count on Linkedin, follower count on Linkedin, gender, average pay, and by what position. Let's begin. 
 
 ```{r}
 #Randomly choosing 70% of the data. 
@@ -179,35 +181,18 @@ RMSE
 MAE
 ```
 
-After improving our model, immediately, I notice that our the number of linkedin connections count is no longer significant. I will go ahead and remove that independent variable. 
 
+Now that the number of linkedin connections is removed from the independent variables, we could see our final result. All of our variables are now significant with an overall R^2 of 15%. This means that using the age, connections count, and average pay of director position, and for directors, we can estimate about 15% of the time of how long they will stay at their job. 
 
-```{r}
+If we look deeper into the numbers, we can see that for every 1 unit increase in age, the person will stay about an extra 16 days. 
+For every 1 unit increase in pay, the person will leave -0.0009 earlier. Since this is in terms of dollars, for every 1000 dollars increase in pay, the person will leave 1 earlier. This is quite interesting as I would have predicted that the more money a person receives, the longer a person stays. This does not seem to be the case though. 
+For every 1 unit increase in connectionsCount, the person would stay 27 days less. 
+For every 1 unit increase in director being true, the person will stay about 192 days (a little more than half a year) more. 
 
-#Randomly choosing 70% of the data. 
-sample_selection <- createDataPartition(linkedin$avgMemberPosDuration, p=0.70, list=FALSE)
+# Operationalize
+I believe that this would be an okay model for HR representatives to look at when they are trying to hire a new director. Depending on how long they want a director to stay at their job, they would need to at least look at their pay, age, and see if they are currently a director. For connections count, this doesn't really make sense. It could be very possible that the director moved jobs various time which would mean that the person meet new people more often. Since these variables only count for 15% of the predictions, we also need to look further into this to see if there are other indicators to predict how long a person would stay being a director. 
 
-#Splitting up 70% to go into our train. and 30% to go into our test. 
-train = linkedin[sample_selection, ]
-test = linkedin[-sample_selection, ]
+In the future, I would like to be able to gather more data on how much directors get paid. Currently, I only have 1 director's pay datapoint. Though this seems to be an good estimate at 175k/year salary, I could actually be way off when directors of all positions and industries are averaged. Also, if there is some way to measure social, emotional intelligence, and leadership, then that would be some data points to collect as it would be a great indicator of how long they might stay at the company. 
 
-#New train models with all the significant variables from pervious model and with our new director boolean variable. 
-train_model <- lm(avgMemberPosDuration ~ ageEstimate + avg_pay + director_bool, data = train)
-  
-summary(train_model)
+Some unintended consequences that might arise from using this data approach to predict how long a director would stay at their position is that once a good model is made, HR representatives could adjust their compensation to make a director stay longer at their company. This could also go the other way as well. For example, if a director is not performing at their peak levels, they would adjust some of the variables to make a director leave their jobs. 
 
-predictions <- train_model %>% predict(test)
-
-#Let's plot it
-ggplot(data = test, aes(x = predictions, y = avgMemberPosDuration)) + geom_jitter() + geom_smooth(method="lm")
-
-R2 <- R2(predictions, test$avgMemberPosDuration)
-RMSE <- RMSE(predictions, test$avgMemberPosDuration)
-MAE <- MAE(predictions, test$avgMemberPosDuration)
-
-R2
-RMSE
-MAE
-```
-
-Now that the number of linkedin connections is removed from the independent variables, we could see our final result. All of our variables are now significant with an overall R^2 of 15%. This means that using the age, average pay of director position, and for directors, we can estimate about 15% of the time of how long they will stay at their job. If we look deeper into 
