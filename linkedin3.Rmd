@@ -1,9 +1,10 @@
 ---
-title: "Linkedin Deliverable 2"
+title: "Linkedin Deliverable 3"
+author: "Jonathan Cheon"
+date: "10/7/2019"
 output:
+  html_document: default
   pdf_document: default
-  html_document:
-    df_print: paged
 ---
 
 # Final Deliverable 
@@ -12,8 +13,8 @@ In this study, I was able to look at various Linkedin datasets. Initially, I wan
 This report will improve previous deliverables and provide a final suggestion. 
 
 
-Importing libraries and previous deliverables. 
-```{r, results = 'hide', messages=FALSE}
+### Importing libraries and previous files 
+```{r echo = FALSE}
 include <- function(library_name){
   if( !(library_name %in% installed.packages()) )
     install.packages(library_name)
@@ -28,12 +29,14 @@ include("rvest")
 include("DT")
 include("plyr")
 include("dplyr")
-suppressMessages(purl("linkedin2.Rmd", output = "part2.r"))
+purl("linkedin.Rmd", output="part1.r")
+source("part1.r")
+purl("linkedin2.Rmd", output = "part2.r")
 source("part2.r")
 
 ```
 
-# Deliverable 1 Edits
+## Deliverable 1 Edits
 Cleaning up my person tibble where I will be removing all rows where a column has a NA. 
 ```{r}
 # Remove rows where NA is present. 
@@ -49,7 +52,6 @@ person <- person[!is.na(person$positionId),]
 #Removing columns I will not need. 
 linkedin$companyHasLogo <- NULL
 linkedin$hasPicture <- NULL
-  
 ```
 
 
@@ -60,7 +62,7 @@ ggplot(x, aes(name, followerCount)) + geom_col() +
   geom_hline(yintercept = mean(x$followerCount), linetype="dashed", color="red")
 ```
 
-# Deliverable 2 imporovement
+## Deliverable 2 imporovement
 ```{r}
 #extract only Managers, Director, Assistant, Engineer, ANalyst, Consultant, Coordinator, and Supervisor
 scraped$position <- str_extract(scraped$position, "Manager|Director|Assistant|Engineer|Analyst|Consultant|Coordinator|Supervisor")
@@ -110,8 +112,8 @@ linkedin <- left_join(linkedin, avg_pay_tibble, by= "posTitle")
 linkedin <- na.omit(linkedin)
 
 #Print first 10 rows in linkedin.
-head(linkedin, n=10L)
-
+# head(linkedin, n=10L)
+datatable(linkedin, options=list(pageLength=5))
 ```
 
 # Analysis
