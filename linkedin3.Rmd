@@ -63,6 +63,8 @@ ggplot(x, aes(name, followerCount)) + geom_col() +
 ```
 
 ## Deliverable 2 imporovement
+Here, I will be cleaning more of my dataset from deliverable 2. I want to narrow my search just look at their coorpirate positions. These are the one's I have seen a lot of while manually looking through the dataset. 
+
 ```{r}
 #extract only Managers, Director, Assistant, Engineer, ANalyst, Consultant, Coordinator, and Supervisor
 scraped$position <- str_extract(scraped$position, "Manager|Director|Assistant|Engineer|Analyst|Consultant|Coordinator|Supervisor")
@@ -79,8 +81,8 @@ scraped$description <- NULL
 #Print first 10 rows. 
 head(scraped, n = 10L)
 ```
-
-After looking at my previous dataset and what I have cleaned, I think I will be able to make a model that would be able to predict how long a person would stay at their job based on various variables. Here, I will be cleaning up a little more to pursue this question. 
+# Hypothesis
+After looking at my previous dataset and what I have cleaned, I think I will be able to make a model that would be able to **predict how long a person would stay at their job based on various variables**. Here, I will be cleaning up a little more to pursue this question. 
 ```{r}
 #calculate number of positions and calculate avg pay based on positions. 
 position_group <- group_by(scraped, position)
@@ -110,6 +112,10 @@ linkedin <- left_join(linkedin, avg_pay_tibble, by= "posTitle")
 
 #Remove all rows where NA exists. 
 linkedin <- na.omit(linkedin)
+
+#Remove some columns we don't need. 
+linkedin$mbrLocation <- NULL
+linkedin$mbrTitle <- NULL
 
 #Print first 10 rows in linkedin.
 # head(linkedin, n=10L)
@@ -196,5 +202,6 @@ I believe that this would be an okay model for HR representatives to look at whe
 
 In the future, I would like to be able to gather more data on how much directors get paid. Currently, I only have 1 director's pay datapoint. Though this seems to be an good estimate at 175k/year salary, I could actually be way off when directors of all positions and industries are averaged. Also, if there is some way to measure social, emotional intelligence, and leadership, then that would be some data points to collect as it would be a great indicator of how long they might stay at the company. 
 
-Some unintended consequences that might arise from using this data approach to predict how long a director would stay at their position is that once a good model is made, HR representatives could adjust their compensation to make a director stay longer at their company. This could also go the other way as well. For example, if a director is not performing at their peak levels, they would adjust some of the variables to make a director leave their jobs. 
+Some unintended consequences that might arise from using this data approach to predict how long a director would stay at their position is that once a good model is made, HR representatives could adjust their compensation to make a director stay longer at their company. This could also go the other way as well. For example, if a director is not performing at their peak levels, they would adjust some of the variables to make a director leave their jobs. We would not be entirely sure which way it would sway, but these are just precautionary suggestions. 
+
 
