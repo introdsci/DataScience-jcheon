@@ -21,18 +21,18 @@ include <- function(library_name){
   suppressMessages(library(library_name, character.only=TRUE))
 }
 
-include("tidyverse")
-include("knitr")
-include("stringr")
-include("caret")
-include("rvest")
-include("DT")
-include("plyr")
-include("dplyr")
-purl("linkedin.Rmd", output="part1.r")
-source("part1.r")
-purl("linkedin2.Rmd", output = "part2.r")
-source("part2.r")
+suppressMessages(include("tidyverse"))
+suppressMessages(include("knitr"))
+suppressMessages(include("stringr"))
+suppressMessages(include("caret"))
+suppressMessages(include("rvest"))
+suppressMessages(include("DT"))
+suppressMessages(include("plyr"))
+suppressMessages(include("dplyr"))
+# purl("linkedin.Rmd", output="part1.r")
+# source("part1.r")
+suppressMessages(purl("linkedin2.Rmd", output = "part2.r"))
+suppressMessages(source("part2.r"))
 
 ```
 
@@ -58,8 +58,8 @@ linkedin$hasPicture <- NULL
 Improving on my graph from deliverable 1. Instead of using points, I will be using a bar graph for better visualization. I have also improved the Y-axis to label with numbers instead of scientific notation. 
 ```{r}
 ggplot(x, aes(name, followerCount)) + geom_col() + 
-  scale_y_continuous(name = 'followers', labels = scales::comma) + 
-  geom_hline(yintercept = mean(x$followerCount), linetype="dashed", color="red")
+  geom_hline(yintercept = mean(x$followerCount), linetype="dashed", color="red") + 
+  labs(x="Company",y="Follower Count",title="Follower Count vs. Company")
 ```
 
 ## Deliverable 2 imporovement
@@ -141,7 +141,9 @@ summary(train_model)
 predictions <- train_model %>% predict(test)
 
 #Let's plot it
-ggplot(data = test, aes(x = predictions, y = avgMemberPosDuration)) + geom_jitter() + geom_smooth(method="lm")
+ggplot(data = test, aes(x = predictions, y = avgMemberPosDuration)) + geom_jitter() + 
+  labs(x="prediction",y="Average Position Duration",title="Average Position Duration vs. Prediction") +
+  geom_smooth(method="lm")
 
 R2 <- R2(predictions, test$avgMemberPosDuration)
 RMSE <- RMSE(predictions, test$avgMemberPosDuration)
@@ -178,7 +180,10 @@ summary(train_model)
 predictions <- train_model %>% predict(test)
 
 #Let's plot it
-ggplot(data = test, aes(x = predictions, y = avgMemberPosDuration)) + geom_jitter() + geom_smooth(method="lm")
+ggplot(data = test, aes(x = predictions, y = avgMemberPosDuration)) + 
+  geom_jitter() + 
+  geom_smooth(method="lm") + 
+  labs(x="prediction",y="Average Position Duration",title="Average Position Duration vs. Prediction")
 
 R2 <- R2(predictions, test$avgMemberPosDuration)
 RMSE <- RMSE(predictions, test$avgMemberPosDuration)
